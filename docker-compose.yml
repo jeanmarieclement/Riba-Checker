@@ -1,0 +1,12 @@
+
+
+services:
+  # Web service using Nginx
+  web:
+    image: welfan-web:latest
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html
+    restart: on-failure
+    

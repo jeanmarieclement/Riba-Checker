@@ -1,0 +1,46 @@
+# Previeni l'accesso diretto allo schema XSD
+<Files "CBIPaymentRequest.00.04.01.xsd">
+    Order allow,deny
+    Deny from all
+    # Consenti l'accesso al file solo dallo script PHP
+    <FilesMatch "validate\.php$">
+        Allow from all
+    </FilesMatch>
+</Files>
+
+# Abilita la compressione per migliorare le prestazioni
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml application/xml application/json
+</IfModule>
+
+# Imposta header di sicurezza
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net 'unsafe-inline';"
+    # Cache control per file statici
+    <FilesMatch "\.(html|css|js|png|jpg|jpeg|gif|ico)$">
+        Header set Cache-Control "max-age=86400, public"
+    </FilesMatch>
+</IfModule>
+
+# Proteggi dalle richieste di tipo TRACE
+RewriteEngine On
+RewriteCond %{REQUEST_METHOD} ^TRACE
+RewriteRule .* - [F]
+
+# Forza HTTPS
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Limita la dimensione dei file upload (5MB)
+LimitRequestBody 5242880
+
+# Imposta il timeout per le richieste PHP
+<IfModule mod_php.c>
+    php_value max_execution_time 30
+    php_value post_max_size 6M
+    php_value upload_max_filesize 5M
+    php_value memory_limit 128M
+</IfModule>

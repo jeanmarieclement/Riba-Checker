@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validatore Ri.Ba. DAT</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Tailwind opzionale: puoi rimuoverlo se vuoi solo Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .drop-zone {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background-color: #f9fafb;
+            margin-bottom: 1rem;
+        }
+        .drop-zone.active {
+            border-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+        .drop-zone-text {
+            color: #6b7280;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto py-8 px-4">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-blue-800 mb-2">Validatore Ri.Ba. DAT</h1>
+            <p class="text-gray-600">Carica un file .dat Ri.Ba. per la validazione secondo le specifiche CBI</p>
+            <div class="alert alert-warning mt-4" role="alert" style="background-color:#fff3cd; color:#856404; border:1px solid #ffeeba;">
+                Disclaimer: Questo strumento è fornito a scopo dimostrativo. La validazione è basata sulle specifiche CBI per Ri.Ba. DAT, ma non garantisce la completa conformità con tutti i requisiti bancari. Verificare sempre i file con strumenti ufficiali prima dell'invio.<br>
+                Consulta il documento ufficiale: <a href="docs/CBI-RIBA.pdf" target="_blank" rel="noopener">CBI-RIBA.pdf</a>
+            </div>
+        </header>
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <div class="drop-zone" id="drop-zone">
+                <span class="drop-zone-text">Trascina qui il file .dat oppure <label class="text-blue-600 underline cursor-pointer"><input type="file" id="dat-file-input" accept=".dat" class="hidden">scegli un file</label></span>
+            </div>
+            <button id="validate-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Valida</button>
+            <div id="validation-results" class="hidden mt-4"></div>
+        </div>
+    </div>
+    <div class="container mx-auto py-8 px-4">
+        <div class="bg-white rounded-lg shadow-lg p-6 mt-8">
+            <h2 class="text-xl font-bold text-blue-800 mb-4">Informazioni sullo schema</h2>
+            <ul class="mb-2">
+                <li><b>Nome:</b> CBI-RIBA DAT (CBI-RIB-001 6_02)</li>
+                <li><b>Formato:</b> Testo fisso, 120 caratteri per riga</li>
+                <li><b>Entrata in vigore:</b> 01/06/2021</li>
+                <li><b>Record principali:</b> IB (testa), 14x/20x/30x/40x/50x/51x/70x (ricevuta), EF (coda)</li>
+            </ul>
+            <ul>
+                <li><b>IB:</b> Intestazione del file, contiene dati mittente e ricevente</li>
+                <li><b>Ricevuta:</b> 7 righe consecutive per ogni disposizione</li>
+                <li><b>EF:</b> Coda del file, riepilogo e totali</li>
+            </ul>
+        </div>
+    </div>
+    <script>
+    let selectedFile = null;
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('dat-file-input');
+    const validateBtn = document.getElementById('validate-btn');
+    const resultsDiv = document.getElementById('validation-results');
+
+    dropZone.addEventListener('click', () => {
+        fileInput.value = '';
+        fileInput.click();
+    });
+    dropZone.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropZone.classList.add('active');
+    });
+    dropZone.addEventListener('dragleave', e => {
+        e.preventDefault();
+        dropZone.classList.remove('active');
+    });
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('active');
+        if (e.dataTransfer.files.length) {
+            const file = e.dataTransfer.files[0];
+            selectedFile = file;
+            resultsDiv.innerHTML = '';
+            resultsDiv.classList.add('hidden');
+            dropZone.querySelector('.drop-zone-text').textContent = selectedFile.name;
+        }
+    });
+    fileInput.addEventListener('change', e => {
+        if (e.target.files.length) {
+            const file = e.target.files[0];
+            selectedFile = file;
+            resultsDiv.innerHTML = '';
+            resultsDiv.classList.add('hidden');
+            dropZone.querySelector('.drop-zone-text').textContent = selectedFile.name;
+        }
+    });
+    validateBtn.addEventListener('click', () => {
+        if (!selectedFile) {
+            resultsDiv.textContent = 'Seleziona prima un file .dat.';
+            resultsDiv.classList.remove('hidden');
+            resultsDiv.classList.add('text-red-600');
+            return;
+        }
+        const formData = new FormData();
+        formData.append('datfile', selectedFile);
+        fetch('validate.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(res => {
+            resultsDiv.classList.remove('hidden', 'text-red-600');
+            resultsDiv.classList.remove('text-green-600');
+            if (res.status === 'ok') {
+                resultsDiv.innerHTML = '<span class="text-success fw-bold">File valido!</span><br>' + res.human;
+            } else {
+                resultsDiv.innerHTML = '<span class="text-danger fw-bold">Errore:</span> ' + (res.message !== null && res.message !== undefined ? res.message : res.human);
+            }
+            // Rendi tutte le tabelle responsive e con classi Bootstrap
+            resultsDiv.querySelectorAll('table').forEach(function(tbl){
+                tbl.classList.add('table','table-bordered','table-sm','table-responsive');
+            });
+        })
+        .catch(() => {
+            resultsDiv.classList.remove('hidden');
+            resultsDiv.classList.add('text-red-600');
+            resultsDiv.textContent = 'Errore durante la validazione.';
+        });
+    });
+    </script>
+</body>
+</html>
