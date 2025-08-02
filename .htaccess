@@ -1,12 +1,36 @@
-# Previeni l'accesso diretto allo schema XSD
-<Files "CBIPaymentRequest.00.04.01.xsd">
+# Block direct access to PHP files other than index.php and validate.php
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7)$">
+    Order deny,allow
+    Deny from all
+    Allow from 127.0.0.1
+    Allow from ::1
+</FilesMatch>
+
+# Allow only index.php and validate.php
+<Files "index.php">
+    Order allow,deny
+    Allow from all
+</Files>
+
+<Files "validate.php">
+    Order allow,deny
+    Allow from all
+</Files>
+
+# Prevent directory listing
+Options -Indexes
+
+# Prevent access to sensitive files
+<FilesMatch "^\.(htaccess|htpasswd|git|svn|env|config|json|lock)$">
     Order allow,deny
     Deny from all
-    # Consenti l'accesso al file solo dallo script PHP
-    <FilesMatch "validate\.php$">
-        Allow from all
-    </FilesMatch>
-</Files>
+</FilesMatch>
+
+# Prevent access to backup and temporary files
+<FilesMatch "(^#.*#|~$|\.bak$|\.tmp$|\.swp$|\.log$)">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
 
 # Abilita la compressione per migliorare le prestazioni
 <IfModule mod_deflate.c>
